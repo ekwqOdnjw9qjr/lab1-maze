@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабиринт: Оптимальный путь агента</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="container">
+    <svg id="mazeSvg" width="640" height="640">
+        <!-- Сетка -->
+        <g th:each="i : ${#numbers.sequence(0, 32)}">
+            <line th:x1="${i * 20}" y1="0" th:x2="${i * 20}" y2="640" stroke="#ddd"/>
+            <line x1="0" th:y1="${i * 20}" x2="640" th:y2="${i * 20}" stroke="#ddd"/>
+        </g>
+        <!-- Стены -->
+        <rect th:each="wall : ${maze['walls']}"
+              th:x="${wall.x * 20}" th:y="${wall.y * 20}"
+              width="20" height="20" fill="black"/>
+        <!-- Препятствия -->
+        <circle th:each="obs : ${maze['obstacles']}"
+                th:cx="${obs.x * 20 + 10}" th:cy="${obs.y * 20 + 10}"
+                r="5" fill="blue"/>
+        <!-- Выход -->
+        <rect th:x="${maze['exit'].x * 20}" th:y="${maze['exit'].y * 20}"
+              width="20" height="20" fill="green"/>
+        <!-- Траектория агента -->
+        <circle th:each="pos : ${maze['agentTrace']}"
+                th:cx="${pos.x * 20 + 10}" th:cy="${pos.y * 20 + 10}"
+                r="3" fill="orange" opacity="0.5"/>
+        <!-- Текущая позиция агента -->
+        <polygon th:if="${maze['agent'] != null}"
+                 th:points="${maze['agent'].orientation == 'UP' ?
+                         (maze['agent'].x * 20 + 10) + ',' + (maze['agent'].y * 20) + ' ' +
+                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 20) + ' ' +
+                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 20) :
+                     maze['agent'].orientation == 'RIGHT' ?
+                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 10) + ' ' +
+                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20) + ' ' +
+                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 20) :
+                     maze['agent'].orientation == 'DOWN' ?
+                         (maze['agent'].x * 20 + 10) + ',' + (maze['agent'].y * 20 + 20) + ' ' +
+                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20) + ' ' +
+                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20) :
+                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 10) + ' ' +
+                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20) + ' ' +
+                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 20)}"
+                 fill="red"/>
+    </svg>
+    <div id="controls">
+        <form method="post" action="/evolve">
+            <button type="submit">Эволюция</button>
+        </form>
+        <form method="post" action="/new-evolution">
+            <button type="submit">Новая эволюция</button>
+        </form>
+        <form method="post" action="/simulate">
+            <button type="submit">Запустить лучшего</button>
+        </form>
+        <form method="post" action="/new-map">
+            <button type="submit">Новая карта</button>
+        </form>
+        <p th:text="${message}"></p>
+    </div>
+    <div id="settings">
+        <h3>Выберите генетический алгоритм и настройте эволюцию</h3>
+        <form method="post" action="/settings">
+            <label>Макс. шагов:</label>
+            <input type="number" name="maxSteps" th:value="${maze['settings']['maxSteps']}" min="1" required><br>
+
+            <label>Островов:</label>
+            <input type="number" name="numIslands" th:value="${maze['settings']['numIslands']}" min="1" required><br>
+
+            <label>Размер популяции:</label>
+            <input type="number" name="popSize" th:value="${maze['settings']['popSize']}" min="1" required><br>
+
+            <label>Поколений:</label>
+            <input type="number" name="generations" th:value="${maze['settings']['generations']}" min="1" required><br>
+
+            <label>Интервал миграции:</label>
+            <input type="number" name="migrationInterval" th:value="${maze['settings']['migrationInterval']}" min="1" required><br>
+
+            <label>Турнир:</label>
+            <input type="number" name="tournamentSize" th:value="${maze['settings']['tournamentSize']}" min="1" required><br>
+
+            <label>Кроссовер:</label>
+            <input type="number" step="0.1" name="crossoverRate" th:value="${maze['settings']['crossoverRate']}" min="0" max="1" required><br>
+
+            <label>Мутация:</label>
+            <input type="number" step="0.1" name="mutationRate" th:value="${maze['settings']['mutationRate']}" min="0" max="1" required><br>
+
+            <button type="submit">Применить настройки</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

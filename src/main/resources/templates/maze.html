@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Maze Game</title>
+    <style>
+        .maze {
+            display: grid;
+            grid-template-columns: repeat(32, 30px);
+            grid-gap: 1px;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .wall {
+            background-color: #000;
+        }
+        .empty {
+            background-color: #fff;
+        }
+        .agent {
+            background-color: #f00;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="mt-5">Maze Game</h1>
+    <div class="maze">
+        <div th:each="row, rowIndex : ${grid}">
+            <div th:each="cell, colIndex : ${row}"
+                 class="cell"
+                 th:class="${cell == 1} ? 'wall' : 'empty'">
+                <div th:if="${rowIndex == agent.x && colIndex == agent.y}" class="agent">A</div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-4">
+        <form action="/move" method="post">
+            <button name="action" value="move" class="btn btn-primary">Вперёд</button>
+            <button name="action" value="left" class="btn btn-secondary">Налево</button>
+            <button name="action" value="right" class="btn btn-secondary">Направо</button>
+            <button name="action" value="stop" class="btn btn-danger">Стоп</button>
+        </form>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
