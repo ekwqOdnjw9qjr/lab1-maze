@@ -3,6 +3,7 @@ package com.qwerty.mazeagentgame.evolution;
 import com.qwerty.mazeagentgame.model.Maze;
 import com.qwerty.mazeagentgame.simulation.AgentSimulator;
 import com.qwerty.mazeagentgame.util.Constants;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -10,7 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+@Slf4j
 public class IslandGA implements GeneticAlgorithm {
     private final Maze maze;
     private final List<Island> islands;
@@ -41,6 +42,7 @@ public class IslandGA implements GeneticAlgorithm {
 
     @Override
     public Individual run(Runnable updateCallback) {
+
         islands.forEach(Island::evaluate);
 
         for (int gen = 0; gen < generations; gen++) {
@@ -98,6 +100,7 @@ public class IslandGA implements GeneticAlgorithm {
             islands.get(i).replaceWorstIndividuals(
                     bestIndividuals.get(sourceIsland).stream().map(Individual::copy).toList()
             );
+            log.info("Миграция с острова {} на остров {}", sourceIsland, i);
         });
     }
 

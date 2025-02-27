@@ -27,7 +27,7 @@ public class MazeService {
     private String message = "Выберите действие для запуска эволюции или симуляции";
 
     private int maxSteps = Constants.MAX_STEPS;
-    private int numIslands = Constants.NUMBER_STATES;
+    private int numIslands = Constants.NUMBER_ISLANDS;
     private int popSize = Constants.POPULATION_SIZE;
     private int generations = Constants.GENERATIONS;
     private int migrationInterval = Constants.MIGRATION_INTERVAL;
