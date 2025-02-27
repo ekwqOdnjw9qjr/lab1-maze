@@ -1,21 +1,17 @@
 package com.qwerty.mazeagentgame.model;
 
-
-
-
-
-
-
 import com.qwerty.mazeagentgame.util.Constants;
 import lombok.Getter;
-
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Getter
+@Component
 public class Maze {
+
     private boolean[][] grid;
     private Set<Position> walls;
     private List<Position> dynamicObstacles;
@@ -27,47 +23,44 @@ public class Maze {
         regenerate();
     }
 
+    private void setBorders() {
+        IntStream.range(0, Constants.GRID_SIZE).forEach(i -> {
+            grid[0][i] = grid[Constants.GRID_SIZE - 1][i] = true;
+            grid[i][0] = grid[i][Constants.GRID_SIZE - 1] = true;
+        });
+    }
+
     public void regenerate() {
-        do {
-            grid = new boolean[Constants.GRID_SIZE][Constants.GRID_SIZE];
-            for (int y = 0; y < Constants.GRID_SIZE; y++) {
-                for (int x = 0; x < Constants.GRID_SIZE; x++) {
-                    grid[y][x] = rand.nextDouble() < 0.25; // Уменьшаем вероятность стен до 25% для проходимости
-                }
-            }
-            setBorders();
-            grid[start.getY()][start.getX()] = grid[exit.getY()][exit.getX()] = false;
-        } while (!hasPath());
+        grid = new boolean[Constants.GRID_SIZE][Constants.GRID_SIZE];
+        setBorders();
+
+        // Упрощённое создание стен с меньшей плотностью (например, 10% вместо 17%)
+        IntStream.range(1, Constants.GRID_SIZE - 1)
+                .forEach(y -> IntStream.range(1, Constants.GRID_SIZE - 1)
+                        .forEach(x -> grid[y][x] = rand.nextDouble() < 0.10));
+
+        // Убедимся, что начало и выход свободны
+        grid[start.getY()][start.getX()] = false;
+        grid[exit.getY()][exit.getX()] = false;
+
+        // Упрощённое обеспечение пути: создаём прямой путь от начала к выходу
+        ensureSimplePath();
+
         walls = collectWalls();
         initDynamicObstacles();
     }
 
-    private void setBorders() {
-        IntStream.range(0, Constants.GRID_SIZE).forEach(x -> {
-            grid[0][x] = grid[Constants.GRID_SIZE - 1][x] = true;
-            grid[x][0] = grid[x][Constants.GRID_SIZE - 1] = true;
-        });
-    }
-
-    private boolean hasPath() {
-        Set<Position> visited = new HashSet<>();
-        Queue<Position> queue = new LinkedList<>();
-        queue.add(start);
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        while (!queue.isEmpty()) {
-            Position curr = queue.poll();
-            if (curr.equals(exit)) return true;
-            Arrays.stream(dirs)
-                    .map(dir -> new Position(curr.getX() + dir[0], curr.getY() + dir[1]))
-                    .filter(this::isValid)
-                    .filter(pos -> !grid[pos.getY()][pos.getX()])
-                    .filter(pos -> !visited.contains(pos))
-                    .forEach(pos -> {
-                        visited.add(pos);
-                        queue.add(pos);
-                    });
+    private void ensureSimplePath() {
+        int x = start.getX(), y = start.getY();
+        while (x < exit.getX() || y < exit.getY()) {
+            grid[y][x] = false;
+            if (x < exit.getX() && rand.nextDouble() < 0.7) {
+                x++; // Движение вправо с вероятностью 70%
+            } else if (y < exit.getY()) {
+                y++; // Движение вниз
+            }
         }
-        return false;
+        grid[exit.getY()][exit.getX()] = false;
     }
 
     private Set<Position> collectWalls() {
@@ -80,34 +73,39 @@ public class Maze {
     }
 
     private void initDynamicObstacles() {
-        dynamicObstacles = IntStream.range(0, Constants.GRID_SIZE)
-                .boxed()
-                .flatMap(y -> IntStream.range(0, Constants.GRID_SIZE)
-                        .mapToObj(x -> new Position(x, y)))
-                .filter(pos -> !grid[pos.getY()][pos.getX()] && !pos.equals(start) && !pos.equals(exit))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
-                    Collections.shuffle(list, rand);
-                    return list.subList(0, Math.min(5, list.size()));
-                }));
+        dynamicObstacles = IntStream.range(0, 4)
+                .mapToObj(i -> {
+                    Position pos;
+                    do {
+                        pos = new Position(rand.nextInt(Constants.GRID_SIZE - 2) + 1,
+                                rand.nextInt(Constants.GRID_SIZE - 2) + 1);
+                    } while (pos.equals(start) || pos.equals(exit) || grid[pos.getY()][pos.getX()]);
+                    return pos;
+                })
+                .collect(Collectors.toList());
     }
 
     public void moveDynamicObstacles() {
         dynamicObstacles = dynamicObstacles.stream()
                 .map(pos -> {
-                    int[][] moves = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-                    return Arrays.stream(moves)
-                            .map(m -> new Position(pos.getX() + m[0], pos.getY() + m[1]))
+                    int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                    List<Position> possibleMoves = Arrays.stream(directions)
+                            .map(dir -> new Position(pos.getX() + dir[0], pos.getY() + dir[1]))
                             .filter(this::isValid)
                             .filter(p -> !grid[p.getY()][p.getX()])
-                            .filter(p -> !dynamicObstacles.contains(p))
                             .filter(p -> !p.equals(start) && !p.equals(exit))
-                            .findFirst()
-                            .orElse(pos);
+                            .filter(p -> dynamicObstacles.stream().noneMatch(p::equals))
+                            .collect(Collectors.toList());
+
+                    return possibleMoves.isEmpty() || rand.nextDouble() >= 0.8
+                            ? pos
+                            : possibleMoves.get(rand.nextInt(possibleMoves.size()));
                 })
                 .collect(Collectors.toList());
     }
 
     private boolean isValid(Position pos) {
-        return pos.getX() >= 0 && pos.getX() < Constants.GRID_SIZE && pos.getY() >= 0 && pos.getY() < Constants.GRID_SIZE;
+        return pos.getX() >= 0 && pos.getX() < Constants.GRID_SIZE &&
+                pos.getY() >= 0 && pos.getY() < Constants.GRID_SIZE;
     }
 }

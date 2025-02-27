@@ -1,28 +1,22 @@
 package com.qwerty.mazeagentgame.controller;
 
-
-
-
-
-
-
-
-
+import com.qwerty.mazeagentgame.model.Maze;
+import com.qwerty.mazeagentgame.model.Position;
 import com.qwerty.mazeagentgame.service.MazeService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 
 @Controller
+@RequiredArgsConstructor
 public class MazeController {
-    private final MazeService mazeService;
 
-    public MazeController(MazeService mazeService) {
-        this.mazeService = mazeService;
-    }
+    private final MazeService mazeService;
+    private final Maze maze;
 
     @GetMapping("/")
     public String index(Model model) {
@@ -49,7 +43,7 @@ public class MazeController {
 
     @PostMapping("/simulate")
     public String simulate(Model model) {
-        mazeService.simulate();
+        mazeService.simulateSteps();
         model.addAttribute("maze", mazeService.getMazeDataWithSimulation());
         model.addAttribute("message", mazeService.getMessage());
         return "index";
@@ -75,11 +69,23 @@ public class MazeController {
     public String applySettings(@RequestParam int maxSteps, @RequestParam int numIslands, @RequestParam int popSize,
                                 @RequestParam int generations, @RequestParam int migrationInterval,
                                 @RequestParam int tournamentSize, @RequestParam double crossoverRate,
-                                @RequestParam double mutationRate, Model model) {
+                                @RequestParam double mutationRate, @RequestParam String gaType, Model model) {
         mazeService.setSettings(maxSteps, numIslands, popSize, generations, migrationInterval,
-                tournamentSize, crossoverRate, mutationRate);
+                tournamentSize, crossoverRate, mutationRate, gaType);
         model.addAttribute("maze", mazeService.getMazeData());
         model.addAttribute("message", mazeService.getMessage());
         return "index";
     }
+
+    @GetMapping("/api/obstacles")
+    public Map<String, List<Position>> getObstacles() {
+        return Map.of("obstacles", maze.getDynamicObstacles());
+    }
+
+    @GetMapping("/api/steps")
+    @ResponseBody
+    public Map<String, Object> getStepByStepSimulation() {
+        return mazeService.getStepByStepSimulation();
+    }
+
 }

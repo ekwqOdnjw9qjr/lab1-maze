@@ -8,44 +8,26 @@
 <body>
 <div id="container">
     <svg id="mazeSvg" width="640" height="640">
-        <!-- Сетка -->
+
         <g th:each="i : ${#numbers.sequence(0, 32)}">
             <line th:x1="${i * 20}" y1="0" th:x2="${i * 20}" y2="640" stroke="#ddd"/>
             <line x1="0" th:y1="${i * 20}" x2="640" th:y2="${i * 20}" stroke="#ddd"/>
         </g>
-        <!-- Стены -->
+
         <rect th:each="wall : ${maze['walls']}"
               th:x="${wall.x * 20}" th:y="${wall.y * 20}"
               width="20" height="20" fill="black"/>
-        <!-- Препятствия -->
+
         <circle th:each="obs : ${maze['obstacles']}"
                 th:cx="${obs.x * 20 + 10}" th:cy="${obs.y * 20 + 10}"
-                r="5" fill="blue"/>
-        <!-- Выход -->
+                r="5" fill="blue" class="obstacle"/>
+
         <rect th:x="${maze['exit'].x * 20}" th:y="${maze['exit'].y * 20}"
               width="20" height="20" fill="green"/>
-        <!-- Траектория агента -->
-        <circle th:each="pos : ${maze['agentTrace']}"
-                th:cx="${pos.x * 20 + 10}" th:cy="${pos.y * 20 + 10}"
-                r="3" fill="orange" opacity="0.5"/>
-        <!-- Текущая позиция агента -->
-        <polygon th:if="${maze['agent'] != null}"
-                 th:points="${maze['agent'].orientation == 'UP' ?
-                         (maze['agent'].x * 20 + 10) + ',' + (maze['agent'].y * 20) + ' ' +
-                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 20) + ' ' +
-                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 20) :
-                     maze['agent'].orientation == 'RIGHT' ?
-                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 10) + ' ' +
-                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20) + ' ' +
-                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 20) :
-                     maze['agent'].orientation == 'DOWN' ?
-                         (maze['agent'].x * 20 + 10) + ',' + (maze['agent'].y * 20 + 20) + ' ' +
-                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20) + ' ' +
-                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20) :
-                         (maze['agent'].x * 20) + ',' + (maze['agent'].y * 20 + 10) + ' ' +
-                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20) + ' ' +
-                         (maze['agent'].x * 20 + 20) + ',' + (maze['agent'].y * 20 + 20)}"
-                 fill="red"/>
+
+        <polygon id="agent"
+                 points="10,10 0,20 20,20"
+        fill="red" style="display: none;"/>
     </svg>
     <div id="controls">
         <form method="post" action="/evolve">
@@ -60,8 +42,11 @@
         <form method="post" action="/new-map">
             <button type="submit">Новая карта</button>
         </form>
+        <button onclick="startStepByStep()">Шаг за шагом</button>
+        <p id="stepCounter">Шаг: 0</p>
         <p th:text="${message}"></p>
     </div>
+    <div id="simulationMessage"></div>
     <div id="settings">
         <h3>Выберите генетический алгоритм и настройте эволюцию</h3>
         <form method="post" action="/settings">
@@ -89,9 +74,81 @@
             <label>Мутация:</label>
             <input type="number" step="0.1" name="mutationRate" th:value="${maze['settings']['mutationRate']}" min="0" max="1" required><br>
 
+            <label>Тип GA:</label>
+            <select name="gaType" th:value="${maze['settings']['gaType']}" required>
+                <option value="IslandGA" th:selected="${maze['settings']['gaType'] == 'IslandGA'}">Island GA</option>
+                <option value="SimulatedAnnealing" th:selected="${maze['settings']['gaType'] == 'SimulatedAnnealing'}">SimulatedAnnealing</option>
+            </select><br>
+
             <button type="submit">Применить настройки</button>
         </form>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+    function updateMaze(state) {
+        const agent = $('#agent');
+
+        if (state.position && state.orientation) {
+            agent.attr('points', getAgentPoints(state.position.x, state.position.y, state.orientation));
+            agent.show();
+        } else {
+            agent.hide();
+        }
+
+        const obstacles = $('#mazeSvg circle');
+        if (state.dynamicObstacles) {
+            obstacles.each(function(index) {
+                if (index < state.dynamicObstacles.length) {
+                    const obs = state.dynamicObstacles[index];
+                    $(this).attr('cx', obs.x * 20 + 10).attr('cy', obs.y * 20 + 10).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        } else {
+            obstacles.hide();
+        }
+    }
+
+    function getAgentPoints(x, y, orientation) {
+        const offset = 10;
+        switch (orientation) {
+            case 'UP': return (x * 20 + offset) + ',' + (y * 20) + ' ' + (x * 20) + ',' + (y * 20 + 20) + ' ' + (x * 20 + 20) + ',' + (y * 20 + 20);
+            case 'RIGHT': return (x * 20 + 20) + ',' + (y * 20 + offset) + ' ' + (x * 20) + ',' + (y * 20) + ' ' + (x * 20) + ',' + (y * 20 + 20);
+            case 'DOWN': return (x * 20 + offset) + ',' + (y * 20 + 20) + ' ' + (x * 20) + ',' + (y * 20) + ' ' + (x * 20 + 20) + ',' + (y * 20);
+            case 'LEFT': return (x * 20) + ',' + (y * 20 + offset) + ' ' + (x * 20 + 20) + ',' + (y * 20) + ' ' + (x * 20 + 20) + ',' + (y * 20 + 20);
+            default: return (x * 20 + offset) + ',' + (y * 20 + offset) + ' ' + (x * 20) + ',' + (y * 20) + ' ' + (x * 20 + 20) + ',' + (y * 20 + 20);
+        }
+    }
+
+    function startStepByStep() {
+        $.get('/api/steps', function(response) {
+            let steps = response.steps;
+            let message = response.message;
+            $('#simulationMessage').text(message);
+
+            let stepIndex = 0;
+            function nextStep() {
+                if (stepIndex < steps.length) {
+                    updateMaze(steps[stepIndex]);
+                    $('#stepCounter').text('Шаг: ' + (stepIndex + 1));
+                    stepIndex++;
+                    setTimeout(nextStep, 100);
+                } else {
+                    $('#stepCounter').text('Симуляция завершена на шаге: ' + steps.length);
+                    $('#agent').hide();
+                }
+            }
+            nextStep();
+        }).fail(function(error) {
+            console.error('Ошибка при получении шагов:', error);
+            $('#simulationResult').text('Ошибка: не удалось получить данные симуляции.');
+        });
+    }
+
+</script>
 </body>
 </html>

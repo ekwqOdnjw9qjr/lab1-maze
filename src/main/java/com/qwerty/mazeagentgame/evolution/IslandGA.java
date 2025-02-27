@@ -1,107 +1,110 @@
 package com.qwerty.mazeagentgame.evolution;
 
-
-
-
-
-
 import com.qwerty.mazeagentgame.model.Maze;
+import com.qwerty.mazeagentgame.simulation.AgentSimulator;
+import com.qwerty.mazeagentgame.util.Constants;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class IslandGA implements GeneticAlgorithm {
     private final Maze maze;
     private final List<Island> islands;
     private final int generations;
-    private final Random rand;
-    private final int numIslands;
-    private final int popSize;
     private final int migrationInterval;
     private final int tournamentSize;
     private final double crossoverRate;
     private final double mutationRate;
-
-    private static class Island {
-        private List<Individual> population;
-        private final Maze maze;
-        private final Random rand;
-
-        Island(int popSize, Maze maze, Random rand) {
-            this.maze = maze;
-            this.rand = rand;
-            population = IntStream.range(0, popSize)
-                    .mapToObj(i -> new Individual(rand))
-                    .collect(Collectors.toList());
-        }
-
-        void evaluate() {
-            population.forEach(ind -> ind.evaluate(maze));
-        }
-
-        void nextGeneration(int tournamentSize, double crossoverRate, double mutationRate) {
-            population = IntStream.range(0, population.size())
-                    .mapToObj(i -> Individual.tournamentSelection(population, rand, tournamentSize)
-                            .crossover(Individual.tournamentSelection(population, rand, tournamentSize))[i % 2])
-                    .peek(ind -> ind.mutate(mutationRate))
-                    .collect(Collectors.toList());
-            evaluate();
-        }
-
-        Individual getBest() {
-            return population.stream()
-                    .max(Comparator.comparingDouble(Individual::getFitness))
-                    .orElseThrow();
-        }
-    }
+    private final int numMigrants;
+    private final int eliteSize;
+    private final ExecutorService executor;
 
     public IslandGA(Maze maze, Random rand, int numIslands, int popSize, int generations, int migrationInterval,
-                    int tournamentSize, double crossoverRate, double mutationRate) {
+                    int tournamentSize, double crossoverRate, double mutationRate, int numMigrants) {
         this.maze = maze;
-        this.rand = rand;
-        this.numIslands = numIslands;
-        this.popSize = popSize;
         this.generations = generations;
         this.migrationInterval = migrationInterval;
         this.tournamentSize = tournamentSize;
         this.crossoverRate = crossoverRate;
         this.mutationRate = mutationRate;
-        islands = IntStream.range(0, numIslands)
+        this.numMigrants = numMigrants;
+        this.eliteSize = Math.max(2, popSize / 10);
+        this.islands = IntStream.range(0, numIslands)
                 .mapToObj(i -> new Island(popSize, maze, rand))
-                .collect(Collectors.toList());
+                .toList();
+        this.executor = Executors.newFixedThreadPool(numIslands);
     }
 
     @Override
     public Individual run(Runnable updateCallback) {
         islands.forEach(Island::evaluate);
-        IntStream.range(0, generations).forEach(gen -> {
-            islands.forEach(island -> island.nextGeneration(tournamentSize, crossoverRate, mutationRate));
-            if (gen % migrationInterval == 0) migrate();
+
+        for (int gen = 0; gen < generations; gen++) {
+            try {
+                List<Future<?>> futures = islands.stream()
+                        .map(island -> executor.submit(() ->
+                                island.nextGeneration(tournamentSize, crossoverRate, mutationRate, eliteSize)))
+                        .collect(Collectors.toList());
+
+                futures.forEach(future -> {
+                    try {
+                        future.get();
+                    } catch (Exception exception) {
+                        throw new RuntimeException("Execution error in parallel threads", exception);
+                    }
+                });
+            } catch (Exception exception) {
+                throw new RuntimeException("Execution error in parallel threads", exception);
+            }
+
+            if (gen % migrationInterval == 0 && gen > 0) {
+                migrate();
+            }
+
             if (updateCallback != null) updateCallback.run();
-        });
-        return islands.stream()
-                .map(Island::getBest)
-                .max(Comparator.comparingDouble(Individual::getFitness))
-                .orElseThrow();
+
+            Individual best = getGlobalBest();
+            AgentSimulator simulator = new AgentSimulator(best.getGenotype(), maze);
+            simulator.reset();
+
+            while (simulator.getSteps() < Constants.MAX_STEPS && simulator.step()) {
+                maze.moveDynamicObstacles();
+
+                if (simulator.getPosition().equals(maze.getExit())) {
+                    simulator.setReachedExit(!maze.getDynamicObstacles().contains(maze.getExit()));
+                    if (simulator.isReachedExit()) {
+                        executor.shutdownNow();
+                        return best;
+                    }
+                }
+            }
+        }
+        executor.shutdownNow();
+        return getGlobalBest();
     }
 
+
     private void migrate() {
-        List<Individual> migrants = islands.stream().map(Island::getBest).map(Individual::copy).collect(Collectors.toList());
+        List<List<Individual>> bestIndividuals = islands.stream()
+                .map(island -> island.getBestIndividuals(numMigrants))
+                .toList();
+
         IntStream.range(0, islands.size()).forEach(i -> {
-            Island island = islands.get(i);
-            Individual source = migrants.get((i + islands.size() - 1) % islands.size());
-            Individual worst = island.population.stream()
-                    .min(Comparator.comparingDouble(Individual::getFitness))
-                    .orElseThrow();
-            if (source.getFitness() > worst.getFitness()) {
-                island.population = Stream.concat(
-                                island.population.stream().filter(ind -> !ind.equals(worst)),
-                                Stream.of(source))
-                        .collect(Collectors.toList());
-                island.evaluate();
-            }
+            int sourceIsland = (i + islands.size() - 1) % islands.size();
+            islands.get(i).replaceWorstIndividuals(
+                    bestIndividuals.get(sourceIsland).stream().map(Individual::copy).toList()
+            );
         });
+    }
+
+    private Individual getGlobalBest() {
+        return islands.stream()
+                .map(island -> island.getBestIndividuals(1).get(0))
+                .max(Comparator.comparingDouble(Individual::getFitness))
+                .orElseThrow(() -> new IllegalStateException("The population is empty it is impossible to choose the best agent"));
     }
 }
