@@ -56,33 +56,33 @@
 ## Структура проекта
 
 ```
-com.qwerty.mazeagentgame/            # Основной исходный код проекта
-├── controller/                             
-│   └── MazeController.java    
-├── evolution/                 
-│   ├── GeneticAlgorithm.java         
-│   ├── Individual.java
-│   ├── Island.java
-│   ├── IslandGA.java
-│   └── StandartGA.java         
-├── model/
+com.qwerty.mazeagentgame/           # Основной пакет проекта
+├── controller/                     # Контроллеры для обработки запросов        
+│   └── MazeController.java        
+├── evolution/                      # Пакет с реализацией эволюционных алгоритмамов
+│   ├── GeneticAlgorithm.java       
+│   ├── Individual.java             
+│   ├── Island.java                 
+│   ├── IslandGA.java               
+│   └── SimulatedAnnealing.java         
+├── model/                         # Модели
 │   ├── Gene.java            
 │   ├── Maze.java         
 │   └── Position.java          
-├── service/                   
+├── service/                       # Сервисы для бизнес-логики
 │   └── MazeService.java               
-├── simulation/                   
+├── simulation/                    # Пакет с реализацией симуляции поведения агента
 │   └── AgentSimulator.java   
-├── util/
-│   ├── Action.java            
+├── util/                          # Утилитарные классы и константы
+│   ├── Action.java             
 │   ├── Constants.java                     
 │   └── Orientation.java 
-├── Main.java 
-├── style.css
-├── index.html
-├── application.yml
-├── pom.xml  
-└── README.md                       # Описание проекта       
+├── Main.java                      # Главный класс приложения 
+├── style.css                      # css стили для интерфейса
+├── index.html                     # Реализация графического интерфейса
+├── application.yml                # Конфигурационный файл приложения
+├── pom.xml                        # Файл конфигурации Maven 
+└── README.md                      # Документация проекта       
 ```
 
 ## Запуск проекта

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Slf4j
 public class MazeService {
-    private static final Logger logger = LoggerFactory.getLogger(MazeService.class);
+
 
     private final Maze maze = new Maze();
     private Individual bestIndividual;
@@ -34,6 +34,9 @@ public class MazeService {
     private int tournamentSize = Constants.TOURNAMENT_SIZE;
     private double crossoverRate = Constants.CROSSOVER_RATE;
     private double mutationRate = Constants.MUTATION_RATE;
+    private int maxIterations = Constants.MAX_ITERATIONS;
+    private double initialTemperature = Constants.INITIAL_TEMPERATURE;
+    private double coolingRate = Constants.COOLING_RATE;
     private String gaType = "IslandGA";
 
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -49,7 +52,8 @@ public class MazeService {
     }
 
     public void setSettings(int maxSteps, int numIslands, int popSize, int generations, int migrationInterval,
-                            int tournamentSize, double crossoverRate, double mutationRate, String gaType) {
+                            int tournamentSize, double crossoverRate, double mutationRate, int maxIterations,
+                            double initialTemperature, double coolingRate, String gaType) {
         this.maxSteps = maxSteps;
         this.numIslands = numIslands;
         this.popSize = popSize;
@@ -58,6 +62,9 @@ public class MazeService {
         this.tournamentSize = tournamentSize;
         this.crossoverRate = crossoverRate;
         this.mutationRate = mutationRate;
+        this.maxIterations = maxIterations;
+        this.initialTemperature = initialTemperature;
+        this.coolingRate = coolingRate;
         this.gaType = gaType != null ? gaType : "IslandGA";
         message = "Настройки применены";
     }
@@ -70,7 +77,7 @@ public class MazeService {
         try {
             GeneticAlgorithm geneticAlgorithm;
             if ("SimulatedAnnealing".equals(gaType)) {
-                geneticAlgorithm = new SimulatedAnnealing(maze, rand, 15000, 4000.0, 0.99); // Настройки по умолчанию
+                geneticAlgorithm = new SimulatedAnnealing(maze, rand, maxIterations, initialTemperature, coolingRate);
             } else {
                 geneticAlgorithm = new IslandGA(maze, rand, numIslands, popSize, generations, migrationInterval,
                         tournamentSize, crossoverRate, mutationRate, 3);
@@ -168,6 +175,9 @@ public class MazeService {
         settings.put("crossoverRate", crossoverRate);
         settings.put("mutationRate", mutationRate);
         settings.put("gaType", gaType);
+        settings.put("maxIterations", maxIterations);
+        settings.put("initialTemperature",initialTemperature);
+        settings.put("coolingRate", coolingRate);
         return settings;
     }
 

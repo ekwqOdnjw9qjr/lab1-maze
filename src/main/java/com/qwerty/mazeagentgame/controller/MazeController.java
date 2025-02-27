@@ -69,9 +69,11 @@ public class MazeController {
     public String applySettings(@RequestParam int maxSteps, @RequestParam int numIslands, @RequestParam int popSize,
                                 @RequestParam int generations, @RequestParam int migrationInterval,
                                 @RequestParam int tournamentSize, @RequestParam double crossoverRate,
-                                @RequestParam double mutationRate, @RequestParam String gaType, Model model) {
+                                @RequestParam double mutationRate, @RequestParam int maxIterations,
+                                @RequestParam double initialTemperature, @RequestParam double coolingRate,
+                                @RequestParam String gaType, Model model) {
         mazeService.setSettings(maxSteps, numIslands, popSize, generations, migrationInterval,
-                tournamentSize, crossoverRate, mutationRate, gaType);
+                tournamentSize, crossoverRate, mutationRate, maxIterations, initialTemperature, coolingRate, gaType);
         model.addAttribute("maze", mazeService.getMazeData());
         model.addAttribute("message", mazeService.getMessage());
         return "index";

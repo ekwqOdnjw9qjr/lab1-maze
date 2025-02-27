@@ -74,6 +74,15 @@
             <label>Мутация:</label>
             <input type="number" step="0.1" name="mutationRate" th:value="${maze['settings']['mutationRate']}" min="0" max="1" required><br>
 
+            <label>Максимальное количество итераций:</label>
+            <input type="number"  name="maxIterations" th:value="${maze['settings']['maxIterations']}" min="1"  required><br>
+
+            <label>Начальная температура:</label>
+            <input type="number"  name="initialTemperature" th:value="${maze['settings']['initialTemperature']}" min="1" required><br>
+
+            <label>Скорость охлаждения:</label>
+            <input type="number" step="0.1" name="coolingRate" th:value="${maze['settings']['coolingRate']}" required><br>
+
             <label>Тип GA:</label>
             <select name="gaType" th:value="${maze['settings']['gaType']}" required>
                 <option value="IslandGA" th:selected="${maze['settings']['gaType'] == 'IslandGA'}">Island GA</option>

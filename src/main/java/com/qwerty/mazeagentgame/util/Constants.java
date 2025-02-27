@@ -14,6 +14,9 @@ public final class Constants {
     public static int TOURNAMENT_SIZE = 5;
     public static double CROSSOVER_RATE = 0.8;
     public static double MUTATION_RATE = 0.2;
+    public static int MAX_ITERATIONS = 15000;
+    public static double INITIAL_TEMPERATURE = 4000.0;
+    public static double COOLING_RATE = 0.99;
 
     private Constants() {}
 }
