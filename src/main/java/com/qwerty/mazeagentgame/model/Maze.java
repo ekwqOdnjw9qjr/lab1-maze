@@ -34,16 +34,16 @@ public class Maze {
         grid = new boolean[Constants.GRID_SIZE][Constants.GRID_SIZE];
         setBorders();
 
-        // Упрощённое создание стен с меньшей плотностью (например, 10% вместо 17%)
+
         IntStream.range(1, Constants.GRID_SIZE - 1)
                 .forEach(y -> IntStream.range(1, Constants.GRID_SIZE - 1)
                         .forEach(x -> grid[y][x] = rand.nextDouble() < 0.10));
 
-        // Убедимся, что начало и выход свободны
+
         grid[start.getY()][start.getX()] = false;
         grid[exit.getY()][exit.getX()] = false;
 
-        // Упрощённое обеспечение пути: создаём прямой путь от начала к выходу
+
         ensureSimplePath();
 
         walls = collectWalls();
@@ -55,9 +55,9 @@ public class Maze {
         while (x < exit.getX() || y < exit.getY()) {
             grid[y][x] = false;
             if (x < exit.getX() && rand.nextDouble() < 0.7) {
-                x++; // Движение вправо с вероятностью 70%
+                x++;
             } else if (y < exit.getY()) {
-                y++; // Движение вниз
+                y++;
             }
         }
         grid[exit.getY()][exit.getX()] = false;
